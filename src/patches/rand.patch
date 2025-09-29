@@ -1,0 +1,36 @@
+diff --git a/crypto/rand/rand_lib.c b/crypto/rand/rand_lib.c
+index 1c9589b78a..5968b5492 100644
+--- a/crypto/rand/rand_lib.c
++++ b/crypto/rand/rand_lib.c
+@@ -392,6 +392,10 @@ void RAND_add(const void *buf, int num, double randomness)
+ # if !defined(OPENSSL_NO_DEPRECATED_1_1_0)
+ int RAND_pseudo_bytes(unsigned char *buf, int num)
+ {
++#ifdef __wasi__
++    arc4random_buf(buf, num);
++    return 1;
++#endif
+     const RAND_METHOD *meth = RAND_get_rand_method();
+ 
+     if (meth != NULL && meth->pseudorand != NULL)
+@@ -403,6 +407,9 @@ int RAND_pseudo_bytes(unsigned char *buf, int num)
+ 
+ int RAND_status(void)
+ {
++#ifdef __wasi__
++    return 1;
++#endif
+     EVP_RAND_CTX *rand;
+ # ifndef OPENSSL_NO_DEPRECATED_3_0
+     const RAND_METHOD *meth = RAND_get_rand_method();
+@@ -423,6 +440,10 @@ int RAND_status(void)
+ const RAND_METHOD *RAND_get_rand_method(void)
+ {
+     int i;
++#ifdef __wasi__
++    arc4random_buf(buf, num);
++    return 1;
++#endif
+     RAND_POOL *pool;
+     unsigned char tmpbuf[RAND_DRBG_STRENGTH / 8];
+     size_t len = sizeof(tmpbuf);

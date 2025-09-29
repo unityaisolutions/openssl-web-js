@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenSSL WASM JS - File Hashing Example</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    h1 {
+      color: #333;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    button {
+      background-color: #4CAF50;
+      border: none;
+      color: white;
+      padding: 10px 20px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 16px;
+      margin: 4px 2px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    input[type="file"] {
+      margin: 10px 0;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #e8f5e9;
+      border-radius: 4px;
+    }
+    .algorithm-selector {
+      margin: 10px 0;
+    }
+    .algorithm-selector label {
+      margin-right: 10px;
+    }
+    .progress-container {
+      width: 100%;
+      background-color: #f1f1f1;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+    .progress-bar {
+      height: 20px;
+      background-color: #4CAF50;
+      border-radius: 4px;
+      width: 0%;
+      transition: width 0.3s;
+    }
+    .error {
+      color: #d32f2f;
+      background-color: #ffebee;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>OpenSSL WASM JS - File Hashing Example</h1>
+  
+  <div>
+    <p>This example demonstrates how to calculate cryptographic hashes of files using OpenSSL-WASM-JS.</p>
+    
+    <div>
+      <label for="fileInput">Select a file to hash:</label>
+      <input type="file" id="fileInput">
+    </div>
+    
+    <div class="algorithm-selector">
+      <label>Hash Algorithm:</label>
+      <label><input type="radio" name="algorithm" value="md5" checked> MD5</label>
+      <label><input type="radio" name="algorithm" value="sha1"> SHA-1</label>
+      <label><input type="radio" name="algorithm" value="sha256"> SHA-256</label>
+      <label><input type="radio" name="algorithm" value="sha384"> SHA-384</label>
+      <label><input type="radio" name="algorithm" value="sha512"> SHA-512</label>
+    </div>
+    
+    <button id="calculateHash">Calculate Hash</button>
+    
+    <div class="progress-container" id="progressContainer" style="display: none;">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    
+    <div class="error" id="errorMessage"></div>
+    
+    <div class="result">
+      <h3>Results:</h3>
+      <div>
+        <strong>File:</strong>
+        <pre id="fileName">No file selected</pre>
+      </div>
+      <div>
+        <strong>Size:</strong>
+        <pre id="fileSize">-</pre>
+      </div>
+      <div>
+        <strong>Hash:</strong>
+        <pre id="hashResult">-</pre>
+      </div>
+      <div>
+        <strong>Time taken:</strong>
+        <pre id="timeTaken">-</pre>
+      </div>
+    </div>
+  </div>
+
+  <script src="../dist/openssl.min.js"></script>
+  <script>
+    // Global variables
+    let openssl;
+    let selectedFile;
+    
+    // Initialize OpenSSL WASM
+    async function init() {
+      try {
+        openssl = await OpenSSLWasmJS.initialize();
+        console.log('OpenSSL version:', openssl.version());
+      } catch (error) {
+        console.error('Failed to initialize OpenSSL WASM:', error);
+        showError('Failed to initialize OpenSSL WASM: ' + error.message);
+      }
+    }
+    
+    // Show error message
+    function showError(message) {
+      const errorElement = document.getElementById('errorMessage');
+      errorElement.textContent = message;
+      errorElement.style.display = 'block';
+    }
+    
+    // Hide error message
+    function hideError() {
+      document.getElementById('errorMessage').style.display = 'none';
+    }
+    
+    // Update file information
+    function updateFileInfo() {
+      const fileInput = document.getElementById('fileInput');
+      selectedFile = fileInput.files[0];
+      
+      if (selectedFile) {
+        document.getElementById('fileName').textContent = selectedFile.name;
+        document.getElementById('fileSize').textContent = formatFileSize(selectedFile.size);
+      } else {
+        document.getElementById('fileName').textContent = 'No file selected';
+        document.getElementById('fileSize').textContent = '-';
+      }
+      
+      document.getElementById('hashResult').textContent = '-';
+      document.getElementById('timeTaken').textContent = '-';
+    }
+    
+    // Format file size in human-readable format
+    function formatFileSize(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    // Get selected hash algorithm
+    function getSelectedAlgorithm() {
+      const radios = document.getElementsByName('algorithm');
+      for (const radio of radios) {
+        if (radio.checked) {
+          return radio.value;
+        }
+      }
+      return 'sha256'; // Default
+    }
+    
+    // Calculate hash of the selected file
+    async function calculateHash() {
+      if (!openssl) {
+        showError('OpenSSL WASM is not initialized yet. Please wait and try again.');
+        return;
+      }
+      
+      if (!selectedFile) {
+        showError('Please select a file first.');
+        return;
+      }
+      
+      hideError();
+      
+      const algorithm = getSelectedAlgorithm();
+      const chunkSize = 1024 * 1024; // 1MB chunks
+      const fileSize = selectedFile.size;
+      let processedSize = 0;
+      
+      // Show progress bar
+      const progressContainer = document.getElementById('progressContainer');
+      const progressBar = document.getElementById('progressBar');
+      progressContainer.style.display = 'block';
+      progressBar.style.width = '0%';
+      
+      try {
+        const startTime = performance.now();
+        
+        // Create a hash context based on the selected algorithm
+        let hashFunction;
+        switch (algorithm) {
+          case 'md5':
+            hashFunction = openssl.md5.bind(openssl);
+            break;
+          case 'sha1':
+            hashFunction = openssl.sha1.bind(openssl);
+            break;
+          case 'sha256':
+            hashFunction = openssl.sha256.bind(openssl);
+            break;
+          case 'sha384':
+            hashFunction = openssl.sha384.bind(openssl);
+            break;
+          case 'sha512':
+            hashFunction = openssl.sha512.bind(openssl);
+            break;
+          default:
+            hashFunction = openssl.sha256.bind(openssl);
+        }
+        
+        // For simplicity in this example, we'll read the entire file at once
+        // In a production environment, you would process large files in chunks
+        const fileReader = new FileReader();
+        
+        fileReader.onload = function(event) {
+          try {
+            const fileData = new Uint8Array(event.target.result);
+            const hash = hashFunction(fileData);
+            const hashHex = openssl.toHex(hash);
+            
+            const endTime = performance.now();
+            const timeTaken = ((endTime - startTime) / 1000).toFixed(3);
+            
+            document.getElementById('hashResult').textContent = hashHex;
+            document.getElementById('timeTaken').textContent = timeTaken + ' seconds';
+            
+            // Hide progress bar
+            progressContainer.style.display = 'none';
+          } catch (error) {
+            console.error('Error calculating hash:', error);
+            showError('Error calculating hash: ' + error.message);
+            progressContainer.style.display = 'none';
+          }
+        };
+        
+        fileReader.onerror = function() {
+          showError('Error reading file.');
+          progressContainer.style.display = 'none';
+        };
+        
+        fileReader.onprogress = function(event) {
+          if (event.lengthComputable) {
+            const percentComplete = (event.loaded / event.total) * 100;
+            progressBar.style.width = percentComplete + '%';
+          }
+        };
+        
+        fileReader.readAsArrayBuffer(selectedFile);
+        
+      } catch (error) {
+        console.error('Error calculating hash:', error);
+        showError('Error calculating hash: ' + error.message);
+        progressContainer.style.display = 'none';
+      }
+    }
+    
+    // Add event listeners
+    document.addEventListener('DOMContentLoaded', () => {
+      init();
+      
+      document.getElementById('fileInput').addEventListener('change', updateFileInfo);
+      document.getElementById('calculateHash').addEventListener('click', calculateHash);
+    });
+  </script>
+</body>
+</html>

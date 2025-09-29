@@ -1,0 +1,54 @@
+[
+  "_malloc",
+  "_free",
+  "_openssl_version",
+  "_openssl_init",
+  "_openssl_cleanup",
+  
+  "_random_bytes",
+  
+  "_sha1_digest",
+  "_sha256_digest",
+  "_sha384_digest",
+  "_sha512_digest",
+  "_md5_digest",
+  
+  "_aes_encrypt_init",
+  "_aes_encrypt_update",
+  "_aes_encrypt_final",
+  "_aes_decrypt_init",
+  "_aes_decrypt_update",
+  "_aes_decrypt_final",
+  
+  "_rsa_generate_key",
+  "_rsa_public_encrypt",
+  "_rsa_private_decrypt",
+  "_rsa_private_encrypt",
+  "_rsa_public_decrypt",
+  "_rsa_sign",
+  "_rsa_verify",
+  
+  "_pem_read_bio_private_key",
+  "_pem_read_bio_pubkey",
+  "_pem_write_bio_private_key",
+  "_pem_write_bio_pubkey",
+  
+  "_hmac_init",
+  "_hmac_update",
+  "_hmac_final",
+  
+  "_base64_encode",
+  "_base64_decode",
+  
+  "_bio_new_mem_buf",
+  "_bio_free",
+  "_bio_read",
+  "_bio_write",
+  "_bio_get_mem_data",
+  
+  "_evp_pkey_free",
+  "_evp_md_ctx_free",
+  "_evp_cipher_ctx_free",
+  
+  "_get_error_string"
+]

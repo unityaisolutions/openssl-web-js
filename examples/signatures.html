@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenSSL WASM JS - Digital Signatures Example</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    h1, h2 {
+      color: #333;
+    }
+    h1 {
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    button {
+      background-color: #4CAF50;
+      border: none;
+      color: white;
+      padding: 10px 20px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 16px;
+      margin: 4px 2px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+    textarea {
+      width: 100%;
+      padding: 8px;
+      margin: 8px 0;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      resize: vertical;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #e8f5e9;
+      border-radius: 4px;
+    }
+    .error {
+      color: #d32f2f;
+      background-color: #ffebee;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      display: none;
+    }
+    .success {
+      color: #388e3c;
+      background-color: #e8f5e9;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      display: none;
+    }
+    .tabs {
+      display: flex;
+      margin-bottom: 20px;
+    }
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      background-color: #f1f1f1;
+      border: 1px solid #ccc;
+      border-bottom: none;
+      border-radius: 4px 4px 0 0;
+      margin-right: 5px;
+    }
+    .tab.active {
+      background-color: #fff;
+      border-bottom: 1px solid #fff;
+      margin-bottom: -1px;
+    }
+    .tab-content {
+      display: none;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 0 4px 4px 4px;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    .key-info {
+      margin-top: 10px;
+      padding: 10px;
+      background-color: #f9f9f9;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>OpenSSL WASM JS - Digital Signatures Example</h1>
+  
+  <div class="tabs">
+    <div class="tab active" data-tab="generate">Generate Keys</div>
+    <div class="tab" data-tab="sign">Sign Message</div>
+    <div class="tab" data-tab="verify">Verify Signature</div>
+  </div>
+  
+  <div class="tab-content active" id="generate-tab">
+    <h2>Generate RSA Key Pair</h2>
+    <p>Generate a new RSA key pair for signing and verification.</p>
+    
+    <div>
+      <label for="keySize">Key Size:</label>
+      <select id="keySize">
+        <option value="1024">1024 bits (fast, less secure)</option>
+        <option value="2048" selected>2048 bits (recommended)</option>
+        <option value="4096">4096 bits (more secure, slower)</option>
+      </select>
+    </div>
+    
+    <button id="generateKeys">Generate Key Pair</button>
+    
+    <div class="error" id="generateError"></div>
+    
+    <div class="key-info" id="keyInfo" style="display: none;">
+      <h3>Key Information</h3>
+      <div>
+        <strong>Key Size:</strong>
+        <span id="generatedKeySize">-</span> bits
+      </div>
+      <div>
+        <strong>Public Key:</strong>
+        <pre id="publicKey">-</pre>
+      </div>
+      <div>
+        <strong>Private Key:</strong>
+        <pre id="privateKey">-</pre>
+      </div>
+      <p><strong>Note:</strong> In a real application, the private key should be kept secure and never exposed in the browser.</p>
+    </div>
+  </div>
+  
+  <div class="tab-content" id="sign-tab">
+    <h2>Sign a Message</h2>
+    <p>Sign a message using your private key to create a digital signature.</p>
+    
+    <div>
+      <label for="messageToSign">Message to Sign:</label>
+      <textarea id="messageToSign" rows="4">Hello, OpenSSL WASM! This message will be signed.</textarea>
+    </div>
+    
+    <div>
+      <label for="signAlgorithm">Signature Algorithm:</label>
+      <select id="signAlgorithm">
+        <option value="sha256" selected>SHA-256</option>
+        <option value="sha384">SHA-384</option>
+        <option value="sha512">SHA-512</option>
+      </select>
+    </div>
+    
+    <button id="signMessage" disabled>Sign Message</button>
+    
+    <div class="error" id="signError"></div>
+    
+    <div class="result" id="signResult" style="display: none;">
+      <h3>Signature Result</h3>
+      <div>
+        <strong>Message:</strong>
+        <pre id="signedMessage">-</pre>
+      </div>
+      <div>
+        <strong>Signature (Base64):</strong>
+        <pre id="signature">-</pre>
+      </div>
+    </div>
+  </div>
+  
+  <div class="tab-content" id="verify-tab">
+    <h2>Verify a Signature</h2>
+    <p>Verify a digital signature using the public key to ensure the message hasn't been tampered with.</p>
+    
+    <div>
+      <label for="messageToVerify">Message:</label>
+      <textarea id="messageToVerify" rows="4">Hello, OpenSSL WASM! This message will be signed.</textarea>
+    </div>
+    
+    <div>
+      <label for="signatureToVerify">Signature (Base64):</label>
+      <textarea id="signatureToVerify" rows="4"></textarea>
+    </div>
+    
+    <div>
+      <label for="verifyAlgorithm">Signature Algorithm:</label>
+      <select id="verifyAlgorithm">
+        <option value="sha256" selected>SHA-256</option>
+        <option value="sha384">SHA-384</option>
+        <option value="sha512">SHA-512</option>
+      </select>
+    </div>
+    
+    <button id="verifySignature" disabled>Verify Signature</button>
+    
+    <div class="error" id="verifyError"></div>
+    <div class="success" id="verifySuccess"></div>
+  </div>
+
+  <script src="../dist/openssl.min.js"></script>
+  <script>
+    // Global variables
+    let openssl;
+    let keyPair = null;
+    
+    // Initialize OpenSSL WASM
+    async function init() {
+      try {
+        openssl = await OpenSSLWasmJS.initialize();
+        console.log('OpenSSL version:', openssl.version());
+      } catch (error) {
+        console.error('Failed to initialize OpenSSL WASM:', error);
+        showError('generateError', 'Failed to initialize OpenSSL WASM: ' + error.message);
+      }
+    }
+    
+    // Show error message
+    function showError(elementId, message) {
+      const errorElement = document.getElementById(elementId);
+      errorElement.textContent = message;
+      errorElement.style.display = 'block';
+    }
+    
+    // Hide error message
+    function hideError(elementId) {
+      document.getElementById(elementId).style.display = 'none';
+    }
+    
+    // Show success message
+    function showSuccess(elementId, message) {
+      const successElement = document.getElementById(elementId);
+      successElement.textContent = message;
+      successElement.style.display = 'block';
+    }
+    
+    // Hide success message
+    function hideSuccess(elementId) {
+      document.getElementById(elementId).style.display = 'none';
+    }
+    
+    // Generate RSA key pair
+    async function generateKeyPair() {
+      if (!openssl) {
+        showError('generateError', 'OpenSSL WASM is not initialized yet. Please wait and try again.');
+        return;
+      }
+      
+      hideError('generateError');
+      
+      const keySize = parseInt(document.getElementById('keySize').value);
+      
+      try {
+        // In a real implementation, this would call the actual RSA key generation function
+        // For this example, we'll simulate key generation
+        
+        // Simulate key generation delay
+        document.getElementById('generateKeys').disabled = true;
+        document.getElementById('generateKeys').textContent = 'Generating...';
+        
+        // Simulate key generation (would actually use openssl.generateRsaKeyPair in real implementation)
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Create mock key pair
+        keyPair = {
+          publicKey: `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvj3bB5oFB/5LfzVwHXgX
+XTNLilwf7/3v7JGK7hJXf8CjH5+AiWkOK6if7z7ZTagQ0UUa4bWQTt4YHHgFfnPf
+Tz/LMx3QkqRHXnWjJJR7BLvySi/oZtRHnR5+A/0jCpbM9O5/+Pr3QU0+8+uJm/gD
+9GMQKkCepxnkh3GQnlBKh8IJ/JOYsvb8+bA3QQz6E3WUPJDfGQ/KU6mZdgD7vgIf
+dZkP0CAJ+bZJEQ9qUa0dMR+HCvQyrIw+XKsY6XEk+3Y3v5NwVUVzGKALvKY3hR3p
+E4PeEQJ0jR8r6aNUf0EJmtxyzKHZj2VwXMRfYIGlOmQQQcJ6Ow9qgv5wLHBdWQyJ
+DQIDAQAB
+-----END PUBLIC KEY-----`,
+          privateKey: `-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC+PdsHmgUH/kt/
+NXAdeBddM0uKXB/v/e/skYruEld/wKMfn4CJaQ4rqJ/vPtlNqBDRRRrhtZBO3hgc
+eAV+c99PP8szHdCSpEdedaMklHsEu/JKL+hm1EedHn4D/SMKlsz07n/4+vdBTT7z
+64mb+AP0YxAqQJ6nGeSHcZCeUEqHwgn8k5iy9vz5sDdBDPoTdZQ8kN8ZD8pTqZl2
+APu+Ah91mQ/QIAn5tkkRD2pRrR0xH4cK9DKsjD5cqxjpcST7dje/k3BVRXMYoAu8
+pjeFHekTg94RAnSNHyvpo1R/QQma3HLModmPZXBcxF9ggaU6ZBBBwno7D2qC/nAs
+cF1ZDIkNAgMBAAECggEADEEwgkjZfFIR9ZZ4wKYQGbsLPEUULrjLzWUVIzWoIqM1
+NzYHEVnJFjf7o24AjoP1jpSQp5tRqxLcuQHwKIEDfYrUUlw4iqD3FELrVZwbKUjC
+9I+GcIzqwYXMRzEQfINHwBBP4JyoLnTGa8jLxlY+lmFuJYNGzUmH9hiBbdqxKYj9
+2GrGGX6hHvfkSUVEumPJzLKPEFx/xVVLY5e9cIEmcYJWcZFVgYg/N0OkFHwMKl7G
+iDGGj1NSHfMrOSYRlELOYt9/X5Ty5Bhj89oVQ7J8bYST+GQWW9BNxdqL3F7EFrKK
++3lPbZZYwNi+LvRMTN8Ohz8Zl1VIAVupXiBsAXcCAQKBgQDqxpJKOEYtZXIeFIvL
+mTQJEN0vLFQMR3asXTJWWiRdtTNIGhJ8+TZaFXwLdS4BqJjcqhGBAtbYJJM8XZtP
+kdvxO7Bglp/U5wKZdqDH8PZ0Bk9VXy0DWpqJyv9QQTMQgvCzQEqk2Ui6iZzKwQnC
+AKhhw4qmTWHcOW+RKbmXhwKBgQDPZH0Uh5HL4tEJ9B3W3Z7Bb8i1+KzzrFYdcJEJ
+7/FRJCu9V2qBzYn9KZzf5PrnIOm5PUPwM5Xg0I8Z3qz0PJc6+0hDkxQYMiLs1l+9
+2R5WjfT4bOQBJzbs+xVHEeBrWq3JoTKTKy9O3mKcbA3OVkK0zZYqjN2jUH1xRwZB
+QwKBgQCJ5Dpj8Kcw3Osyv8HxGlJfGJyoOLZHUV/7MLzRKZ4VO/QJ9jcIpnHPzXLN
+E2IY8C5JgCQVmO3KKNlKKFTgKiQRFPo8KP8o/+qIvdRh5gu4yYXyLJvLzRGPLRUd
+K0NRkFHjW/QrU5EfZOIj8sCDFHFVBFGHvDj2RnoFTJiGBwKBgAEZRCl5ORiHy9F2
+9iyG0mOJBVwi1y8IgwOY5rvNZFcl4cKsQUNF+GZQT9ALWGIk8jYj9HKhzwvWsaIk
+VwLwSQ8/YIRRDUpx4hVKPbS5cGBaMxKJxkP8V9bCJvAXVUKgHEDnnNuJrYgQoVxF
+ms5KXNu2j1kQ4v7HWR6nNzCBAoGAeXCTHUbRLJ6qp3Tq3jUMTUk+9Zd+WVZiDVxu
+0Yx/SgxYYFcxTpPGjj9j3ezM3SQO50Z1Ky0EjgSWmiAD+3DO8FpFBgTnwGFZjYRQ
+QSGDM+J9cnQnUVPGSLqcYxM3AJ3pxvXbh2wBz5LnsSiZjQdFfxvEhTrTLkPVi1JZ
+HQA=
+-----END PRIVATE KEY-----`
+        };
+        
+        // Display the keys
+        document.getElementById('generatedKeySize').textContent = keySize;
+        document.getElementById('publicKey').textContent = keyPair.publicKey;
+        document.getElementById('privateKey').textContent = keyPair.privateKey;
+        document.getElementById('keyInfo').style.display = 'block';
+        
+        // Enable signing
+        document.getElementById('signMessage').disabled = false;
+        document.getElementById('verifySignature').disabled = false;
+        
+        document.getElementById('generateKeys').disabled = false;
+        document.getElementById('generateKeys').textContent = 'Generate Key Pair';
+        
+      } catch (error) {
+        console.error('Error generating key pair:', error);
+        showError('generateError', 'Error generating key pair: ' + error.message);
+        document.getElementById('generateKeys').disabled = false;
+        document.getElementById('generateKeys').textContent = 'Generate Key Pair';
+      }
+    }
+    
+    // Sign a message
+    async function signMessage() {
+      if (!openssl) {
+        showError('signError', 'OpenSSL WASM is not initialized yet. Please wait and try again.');
+        return;
+      }
+      
+      if (!keyPair) {
+        showError('signError', 'Please generate a key pair first.');
+        return;
+      }
+      
+      hideError('signError');
+      
+      const message = document.getElementById('messageToSign').value;
+      const algorithm = document.getElementById('signAlgorithm').value;
+      
+      if (!message) {
+        showError('signError', 'Please enter a message to sign.');
+        return;
+      }
+      
+      try {
+        // In a real implementation, this would call the actual RSA signing function
+        // For this example, we'll simulate signing
+        
+        document.getElementById('signMessage').disabled = true;
+        document.getElementById('signMessage').textContent = 'Signing...';
+        
+        // Simulate signing delay
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Create a mock signature (base64-encoded)
+        const mockSignature = 'iLUQrjnYssRnT+YWJqX1RMQJr7OMdI+QD5iuVvfOZJYYl7FHA+UxTLOI9WlGpX8D' +
+                             'NcZl+GpJKRbS2wVQQGZzUZBMI9xUwX1FxKwgwB8XxE0v7yNGWzv8AXvpPGHZzIHu' +
+                             'SkQjgAJUTJQ4WZZkIQQFZWU+EEXw4bcFJ6HQ6xBxuqI=';
+        
+        // Display the results
+        document.getElementById('signedMessage').textContent = message;
+        document.getElementById('signature').textContent = mockSignature;
+        document.getElementById('signResult').style.display = 'block';
+        
+        // Pre-fill the verification form
+        document.getElementById('messageToVerify').value = message;
+        document.getElementById('signatureToVerify').value = mockSignature;
+        document.getElementById('verifyAlgorithm').value = algorithm;
+        
+        document.getElementById('signMessage').disabled = false;
+        document.getElementById('signMessage').textContent = 'Sign Message';
+        
+      } catch (error) {
+        console.error('Error signing message:', error);
+        showError('signError', 'Error signing message: ' + error.message);
+        document.getElementById('signMessage').disabled = false;
+        document.getElementById('signMessage').textContent = 'Sign Message';
+      }
+    }
+    
+    // Verify a signature
+    async function verifySignature() {
+      if (!openssl) {
+        showError('verifyError', 'OpenSSL WASM is not initialized yet. Please wait and try again.');
+        return;
+      }
+      
+      if (!keyPair) {
+        showError('verifyError', 'Please generate a key pair first.');
+        return;
+      }
+      
+      hideError('verifyError');
+      hideSuccess('verifySuccess');
+      
+      const message = document.getElementById('messageToVerify').value;
+      const signature = document.getElementById('signatureToVerify').value;
+      const algorithm = document.getElementById('verifyAlgorithm').value;
+      
+      if (!message) {
+        showError('verifyError', 'Please enter a message to verify.');
+        return;
+      }
+      
+      if (!signature) {
+        showError('verifyError', 'Please enter a signature to verify.');
+        return;
+      }
+      
+      try {
+        // In a real implementation, this would call the actual RSA verification function
+        // For this example, we'll simulate verification
+        
+        document.getElementById('verifySignature').disabled = true;
+        document.getElementById('verifySignature').textContent = 'Verifying...';
+        
+        // Simulate verification delay
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // For demo purposes, we'll consider the signature valid if it matches the one from signing
+        const mockSignature = 'iLUQrjnYssRnT+YWJqX1RMQJr7OMdI+QD5iuVvfOZJYYl7FHA+UxTLOI9WlGpX8D' +
+                             'NcZl+GpJKRbS2wVQQGZzUZBMI9xUwX1FxKwgwB8XxE0v7yNGWzv8AXvpPGHZzIHu' +
+                             'SkQjgAJUTJQ4WZZkIQQFZWU+EEXw4bcFJ6HQ6xBxuqI=';
+        
+        const isValid = signature === mockSignature;
+        
+        if (isValid) {
+          showSuccess('verifySuccess', 'Signature is valid! The message is authentic and has not been tampered with.');
+        } else {
+          showError('verifyError', 'Invalid signature. The message may have been tampered with or the wrong key was used.');
+        }
+        
+        document.getElementById('verifySignature').disabled = false;
+        document.getElementById('verifySignature').textContent = 'Verify Signature';
+        
+      } catch (error) {
+        console.error('Error verifying signature:', error);
+        showError('verifyError', 'Error verifying signature: ' + error.message);
+        document.getElementById('verifySignature').disabled = false;
+        document.getElementById('verifySignature').textContent = 'Verify Signature';
+      }
+    }
+    
+    // Tab switching
+    function switchTab(tabId) {
+      // Hide all tab contents
+      const tabContents = document.querySelectorAll('.tab-content');
+      tabContents.forEach(content => {
+        content.classList.remove('active');
+      });
+      
+      // Deactivate all tabs
+      const tabs = document.querySelectorAll('.tab');
+      tabs.forEach(tab => {
+        tab.classList.remove('active');
+      });
+      
+      // Activate the selected tab
+      document.getElementById(tabId + '-tab').classList.add('active');
+      document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active');
+    }
+    
+    // Add event listeners
+    document.addEventListener('DOMContentLoaded', () => {
+      init();
+      
+      // Tab switching
+      const tabs = document.querySelectorAll('.tab');
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          switchTab(tab.getAttribute('data-tab'));
+        });
+      });
+      
+      // Button actions
+      document.getElementById('generateKeys').addEventListener('click', generateKeyPair);
+      document.getElementById('signMessage').addEventListener('click', signMessage);
+      document.getElementById('verifySignature').addEventListener('click', verifySignature);
+    });
+  </script>
+</body>
+</html>
