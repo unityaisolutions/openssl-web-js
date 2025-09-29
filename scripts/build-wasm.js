@@ -86,7 +86,7 @@ const configureArgs = [
   'no-ui-console',
   '--prefix=/usr',
   '--openssldir=/etc/ssl',
-  'wasm32-wasi'
+  'linux-generic32'
 ].join(' ');
 
 // Determine number of CPU cores for parallel build
