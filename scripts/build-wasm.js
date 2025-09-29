@@ -86,7 +86,8 @@ const configureArgs = [
   'no-ui-console',
   '--prefix=/usr',
   '--openssldir=/etc/ssl',
-  'wasm32-wasi'
+  // Use a generic 32-bit target for Emscripten. emcc does not support the wasm32-wasi target.
+  'linux-generic32'
 ].join(' ');
 
 // Determine number of CPU cores for parallel build
