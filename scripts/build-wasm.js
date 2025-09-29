@@ -82,12 +82,11 @@ const configureArgs = [
   'no-shared',
   'no-sock',
   'no-stdio',
-  'no-thread-pool',
   'no-threads',
   'no-ui-console',
   '--prefix=/usr',
   '--openssldir=/etc/ssl',
-  'linux-generic32'
+  'wasm32-wasi'
 ].join(' ');
 
 // Determine number of CPU cores for parallel build
