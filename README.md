@@ -74,7 +74,7 @@ See the [documentation](./docs/API.md) for complete API details and the [example
 ### Prerequisites
 
 - Node.js (v14+)
-- Emscripten SDK
+- Emscripten SDK (we include it as a submodule)
 - CMake (3.14+)
 - Python (3.6+)
 
