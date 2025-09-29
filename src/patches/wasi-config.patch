@@ -2,10 +2,9 @@ diff --git a/Configurations/10-main.conf b/Configurations/10-main.conf
 index 46094f59..c3db2695 100644
 --- a/Configurations/10-main.conf
 +++ b/Configurations/10-main.conf
-@@ -1717,6 +1717,16 @@ my %targets = (
+@@ -1717,6 +1717,15 @@ my %targets = (
          ex_libs          => add("-Wl,--defsym,__wrs_rtp_base=0xe0000000"),
      },
-
 +    "wasm32-wasi" => {
 +        inherit_from    => [ "BASE_unix" ],
 +        CC              => "emcc",
@@ -15,6 +14,5 @@ index 46094f59..c3db2695 100644
 +        lib_cppflags    => add("-DL_ENDIAN"),
 +        bn_ops          => "THIRTY_TWO_BIT",
 +    },
-+
      "vxworks-ppcgen" => {
          inherit_from     => [ "BASE_unix" ],
